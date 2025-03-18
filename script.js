@@ -1,74 +1,100 @@
-//here are my apiKey and url
 let apiKey = "Mm4I5t9EknjFoMCnUg6p1ok7OaYr9HxuzUOTX6KX";
-url = `https://api.nasa.gov/planetary/apod?api_key=${apiKey}&start_date=2025-01-01`;
-let response = [];
-console.log(url);
+let date = "";
+let quantity = "";
+let apiUrl = "";
+let myDat = "";
+let resetButton = "";
+
+// Create options for select element
+const selectElement = document.getElementById("select-days");
+for (let i = 1; i <= 200; i++) {
+  const option = document.createElement("option");
+  option.value = i;
+  option.textContent = i;
+  selectElement.appendChild(option); //this is so much less annoying than how i made the options in the quiz api good lord
+}
+
+// Get variables from DOM
+function getVariables() {
+  quantity = document.getElementById("select-days").value;
+}
+
+//creating a date object n-1 days ago so correct number of photos return.
+/*to do it i had to make a date object and then force it into the format needed by the api.
+ */
+const subtractDays = () => {
+  let days = quantity - 1;
+  const newDate = new Date(); //used catie's date formula to figure this part out
+  newDate.setDate(newDate.getDate() - days);
+  const year = newDate.getFullYear();
+  const month = String(newDate.getMonth() + 1) //bc the month array starts w/ 0
+    .padStart(2, "0"); //why does it require a capital String to turn to String? idk but it works! https://www.w3schools.com/jsref/jsref_string.asp
+  //padStart sets req num of digits and adds an 0 to the beginning for first
+  const day = String(newDate.getDate()).padStart(2, "0");
+  const formattedDate = `${year}-${month}-${day}`; //same format as api url
+  return formattedDate;
+};
+
+function apiUrlGenerator(event) {
+  event.preventDefault();
+  //gets my quantity var
+  getVariables();
+  //sets date to correct day to return specified num of photos
+  date = subtractDays();
+  apiUrl = `https://api.nasa.gov/planetary/apod?api_key=${apiKey}&start_date=${date}`;
+  fetch(apiUrl) // make fetch happen
+    .then((response) => response.json())
+    .then((data) => {
+      myDat = data;
+      cardData(data);
+      //console.log(myDat);
+    })
+
+    .catch((error) => console.error("Error:", error));
+}
 
 function cardData(data) {
   const container = document.getElementById("container");
   container.innerHTML = "";
+  if (data) {
+    data.forEach((item, index) => {
+      const card = document.createElement("div");
+      card.classList = `card card${index}`; //used quizapi project code for this part then tweaked it to these cards.
 
-  data.forEach((item, index) => {
-    const card = document.createElement("div");
-    card.classList = `hidden card card${index}`;
-
-    card.innerHTML = `
+      card.innerHTML = `
     <h2>${item.title}</h2>
-        <img src="${item.hdurl}" alt="eventually there will be an image here" />
+    <p class="photographer">PHOTO BY: ${item.copyright}</p>
+        <img src="${item.hdurl}" alt="image not loaded" />
         <p class="description">${item.explanation}</p>
         <p class="date">${item.date}</p>
-        <p class="photographer">${item.copyright}</p>
+        
     `;
-    container.appendChild(card);
-  });
-}
-
-//write the API call
-function apiCall() {
-  fetch(url)
-    .then((response) => response.json())
-    .then((data) => {
-      //console.log(data);
-      dataFromApi = data;
-      console.log(dataFromApi);
-      cardData(dataFromApi);
-    })
-    .catch((error) => console.error("Error:", error));
-}
-
-apiCall();
-
-//working on revealing cards first.
-let cardRevealButton = document.getElementById("cardRevealButton");
-console.log(cardRevealButton);
-
-function toggleVisibility() {
-  const cards = document.querySelectorAll(".card");
-  cards.forEach((card) => card.classList.toggle("hidden"));
-
-  const buttonText = cardRevealButton.textContent.trim();
-  if (buttonText === "Click here to see the photo!") {
-    cardRevealButton.textContent = "RESET";
-  } else {
-    cardRevealButton.textContent = "Click here to see the photo!";
+      container.appendChild(card);
+    });
   }
-  console.log("Reveal function called");
+  /*in the original  version, you could just run the api call in the background and reveal whenever preferred, swapping the text on the button (how i originally did it)....however, because here we want the user to select the number first, we ALSO need 2 buttons. I want this part to run after the photos generate, so I put it in this part of the code...also was easier to call the api w one button and reset with the other, so a reveal button didn't really work. */
+  resetButton = document.createElement("button");
+  resetButton.id = "reset-button";
+  resetButton.textContent = "Reset";
+  container.appendChild(resetButton);
+  resetButton.addEventListener(
+    "click",
+    resetFunction
+  ); /*adding event listener here bc when i had it outside the function, it kept not generating bc resetButton hadn't been created yet whent he event listener was called thus didn't work. 
+  used console log to see this was what was happening then removed it on fix
+  */
 }
 
-//if it doesn't work, check to see if there's spaces in the text content being replaced
-cardRevealButton.addEventListener("click", toggleVisibility);
-/*removed dummy card code, pasted below: 
-      <div class="hidden card card1">
-        <h2>oh look a card header</h2>
-        <img src="https://www.amazon.com/?tag=admarketus-20&ref=pd_sl_96f329803602185460b04ea3aa7b26a5394ef026678ab1764b783c46&mfadid=adm" alt="eventually there will be an image here" />
-        <p class="description">description</p>
-        <p class="date">date</p>
-        <p class="photographer">photographer</p>
-      </div>
-      <div class="hidden card card2">
-        <h2>oh look a card header</h2>
-        <img src="https://www.amazon.com/?tag=admarketus-20&ref=pd_sl_96f329803602185460b04ea3aa7b26a5394ef026678ab1764b783c46&mfadid=adm" alt="eventually there will be an image here" />
-        <p class="description">description</p>
-        <p class="date">date</p>
-        <p class="photographer">photographer</p>
-      </div>*/
+/*this is basically doing what a toggle function would in the original version, clearing the html of the container*/
+function resetFunction() {
+  const container = document.getElementById("container");
+  container.innerHTML = "";
+}
+
+document
+  .getElementById("cardRevealButton")
+  .addEventListener("click", (event) => {
+    //i need the prevent default since the button runs an api call.
+    event.preventDefault();
+    apiUrlGenerator(event);
+  });
